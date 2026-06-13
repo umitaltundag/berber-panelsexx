@@ -1,0 +1,344 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  email     String   @unique
+  password  String
+  name      String
+  role      String   @default("admin")
+  avatar    String?
+  googleId  String?
+  twoFactor Boolean  @default(false)
+  createdAt DateTime @default(now())
+  auditLogs AuditLog[]
+}
+
+model Customer {
+  id              Int             @id @default(autoincrement())
+  name            String
+  phone           String?
+  email           String?
+  password        String?
+  birthDate       String?
+  segment         String          @default("Standart")
+  notes           String?
+  points          Int             @default(0)
+  totalVisits     Int             @default(0)
+  lastVisit       String?
+  emailVerified   Boolean         @default(false)
+  notifySms       Boolean         @default(true)
+  notifyWhatsapp  Boolean         @default(false)
+  notifyEmail     Boolean         @default(false)
+  isActive        Boolean         @default(true)
+  createdAt       DateTime        @default(now())
+  appointments    Appointment[]
+  payments        Payment[]
+  reviews         Review[]
+  loyaltyTierId   Int?
+  loyaltyTier     LoyaltyTier?    @relation(fields: [loyaltyTierId], references: [id])
+  giftCardsSent   GiftCard[]      @relation("GiftCardSender")
+  giftCardsUsed   GiftCard[]      @relation("GiftCardReceiver")
+  referralsGiven  Referral[]      @relation("ReferralGiver")
+  referralsUsed   Referral[]      @relation("ReferralReceiver")
+  waitingList     WaitingList[]
+  recurringAppts  RecurringAppointment[]
+}
+
+model Staff {
+  id              Int              @id @default(autoincrement())
+  name            String
+  title           String
+  phone           String?
+  email           String?
+  avatar          String?
+  color           String           @default("#4f46e5")
+  workingDays     String?
+  startTime       String?
+  endTime         String?
+  commissionRate  Float            @default(0)
+  isActive        Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  branchId        Int?
+  branch          Branch?          @relation(fields: [branchId], references: [id])
+  appointments    Appointment[]
+  payments        Payment[]
+  reviews         Review[]
+  leaves          Leave[]
+  commissions     Commission[]
+  recurringAppts  RecurringAppointment[]
+}
+
+model Leave {
+  id        Int      @id @default(autoincrement())
+  staffId   Int
+  staff     Staff    @relation(fields: [staffId], references: [id])
+  startDate String
+  endDate   String
+  reason    String?
+  status    String   @default("Beklemede")
+  createdAt DateTime @default(now())
+}
+
+model Branch {
+  id          Int      @id @default(autoincrement())
+  name        String
+  address     String?
+  phone       String?
+  email       String?
+  workingDays String?
+  startTime   String?
+  endTime     String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  staff       Staff[]
+  services    Service[]
+  appointments Appointment[]
+}
+
+model Service {
+  id            Int            @id @default(autoincrement())
+  name          String
+  category      String
+  price         Float
+  duration      Int
+  description   String?
+  products      String?
+  peakPrice     Float?
+  offPeakPrice  Float?
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  branchId      Int?
+  branch        Branch?        @relation(fields: [branchId], references: [id])
+  appointments  Appointment[]
+  commissionOn  Commission[]
+  waitingList   WaitingList[]
+  recurringAppts RecurringAppointment[]
+}
+
+model Appointment {
+  id              Int            @id @default(autoincrement())
+  date            String
+  time            String
+  status          String         @default("Beklemede")
+  note            String?
+  couponCode      String?
+  discountAmount  Float          @default(0)
+  reminderSent    Boolean        @default(false)
+  notificationCh  String?
+  createdAt       DateTime       @default(now())
+
+  customerId Int
+  customer   Customer @relation(fields: [customerId], references: [id])
+
+  staffId    Int
+  staff      Staff    @relation(fields: [staffId], references: [id])
+
+  serviceId  Int
+  service    Service  @relation(fields: [serviceId], references: [id])
+
+  branchId   Int?
+  branch     Branch?  @relation(fields: [branchId], references: [id])
+
+  payment    Payment?
+}
+
+model Payment {
+  id            Int          @id @default(autoincrement())
+  amount        Float
+  method        String       @default("Nakit")
+  status        String       @default("Ödendi")
+  date          String
+  receiptUrl    String?
+  onlineRef     String?
+  createdAt     DateTime     @default(now())
+
+  customerId    Int
+  customer      Customer     @relation(fields: [customerId], references: [id])
+
+  staffId       Int
+  staff         Staff        @relation(fields: [staffId], references: [id])
+
+  appointmentId Int          @unique
+  appointment   Appointment  @relation(fields: [appointmentId], references: [id])
+}
+
+model Review {
+  id        Int      @id @default(autoincrement())
+  rating    Int
+  comment   String?
+  status    String   @default("Beklemede")
+  createdAt DateTime @default(now())
+
+  customerId Int
+  customer   Customer @relation(fields: [customerId], references: [id])
+
+  staffId    Int
+  staff      Staff    @relation(fields: [staffId], references: [id])
+}
+
+model Product {
+  id          Int      @id @default(autoincrement())
+  name        String
+  category    String?
+  stock       Int      @default(0)
+  minStock    Int      @default(5)
+  price       Float?
+  unit        String   @default("adet")
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+}
+
+model GiftCard {
+  id           Int      @id @default(autoincrement())
+  code         String   @unique
+  amount       Float
+  balance      Float
+  message      String?
+  status       String   @default("Aktif")
+  expiresAt    String?
+  createdAt    DateTime @default(now())
+
+  senderId   Int
+  sender     Customer @relation("GiftCardSender", fields: [senderId], references: [id])
+
+  receiverId Int?
+  receiver   Customer? @relation("GiftCardReceiver", fields: [receiverId], references: [id])
+}
+
+model LoyaltyTier {
+  id         Int        @id @default(autoincrement())
+  name       String
+  minPoints  Int        @default(0)
+  discount   Float      @default(0)
+  color      String     @default("#94a3b8")
+  createdAt  DateTime   @default(now())
+  customers  Customer[]
+}
+
+model WaitingList {
+  id        Int      @id @default(autoincrement())
+  date      String
+  time      String
+  status    String   @default("Bekliyor")
+  note      String?
+  createdAt DateTime @default(now())
+
+  customerId Int
+  customer   Customer @relation(fields: [customerId], references: [id])
+
+  serviceId  Int
+  service    Service  @relation(fields: [serviceId], references: [id])
+}
+
+model RecurringAppointment {
+  id        Int      @id @default(autoincrement())
+  frequency String
+  dayOfWeek  Int?
+  dayOfMonth Int?
+  time      String
+  startDate String
+  endDate   String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  customerId Int
+  customer   Customer @relation(fields: [customerId], references: [id])
+
+  staffId    Int
+  staff      Staff    @relation(fields: [staffId], references: [id])
+
+  serviceId  Int
+  service    Service  @relation(fields: [serviceId], references: [id])
+}
+
+model Commission {
+  id        Int      @id @default(autoincrement())
+  amount    Float
+  rate      Float
+  date      String
+  createdAt DateTime @default(now())
+
+  staffId  Int
+  staff    Staff   @relation(fields: [staffId], references: [id])
+
+  serviceId Int
+  service   Service @relation(fields: [serviceId], references: [id])
+}
+
+model Referral {
+  id          Int      @id @default(autoincrement())
+  code        String   @unique
+  discount    String
+  status      String   @default("Aktif")
+  createdAt   DateTime @default(now())
+
+  giverId   Int
+  giver     Customer @relation("ReferralGiver", fields: [giverId], references: [id])
+
+  receiverId Int?
+  receiver   Customer? @relation("ReferralReceiver", fields: [receiverId], references: [id])
+}
+
+model Campaign {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String
+  discount    String
+  startDate   String
+  endDate     String
+  audience    String
+  status      String   @default("Aktif")
+  usedCount   Int      @default(0)
+  createdAt   DateTime @default(now())
+}
+
+model Coupon {
+  id          Int      @id @default(autoincrement())
+  code        String   @unique
+  discount    String
+  type        String
+  usageLimit  Int
+  usedCount   Int      @default(0)
+  expiryDate  String
+  status      String   @default("Aktif")
+  createdAt   DateTime @default(now())
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  type      String
+  icon      String?
+  iconBg    String?
+  iconColor String?
+  title     String
+  message   String?
+  time      String?
+  createdAt DateTime @default(now())
+}
+
+model Setting {
+  id    Int    @id @default(autoincrement())
+  key   String @unique
+  value String
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  action    String
+  entity    String?
+  entityId  Int?
+  details   String?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id])
+}
